@@ -12,7 +12,6 @@ public class GameController : MonoBehaviour
     [SerializeField] private TMP_Text _scoreText;
 
     private float _hiscore;
-    private InputAction _inputActions;
 
     void Awake()
     {
@@ -22,9 +21,6 @@ public class GameController : MonoBehaviour
         }
 
         _restartButton.onClick.AddListener(HandleRestartGame);
-
-        _inputActions = new InputAction();
-
     }
 
     private void HandleRestartGame()
@@ -49,8 +45,5 @@ public class GameController : MonoBehaviour
         _scoreText.text = $"You lasted for {time: 0.00} sec\nHigh Score: {_hiscore: 0.00} sec";
         _playerController.OnPlayerDied -= HandlePlayerDeath;
         _gameOverCanvas.gameObject.SetActive(true);
-
     }
-
-
 }
