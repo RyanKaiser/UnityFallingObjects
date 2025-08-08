@@ -115,10 +115,10 @@ TextureImporter:
       name: PlayerLand_0
       rect:
         serializedVersion: 2
-        x: 37
-        y: 147
-        width: 38
-        height: 76
+        x: 0
+        y: 126
+        width: 128
+        height: 126
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -137,10 +137,10 @@ TextureImporter:
       name: PlayerLand_1
       rect:
         serializedVersion: 2
-        x: 175
-        y: 146
-        width: 36
-        height: 65
+        x: 128
+        y: 126
+        width: 128
+        height: 126
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -159,10 +159,10 @@ TextureImporter:
       name: PlayerLand_2
       rect:
         serializedVersion: 2
-        x: 303
-        y: 147
-        width: 53
-        height: 50
+        x: 256
+        y: 126
+        width: 128
+        height: 126
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -181,10 +181,10 @@ TextureImporter:
       name: PlayerLand_3
       rect:
         serializedVersion: 2
-        x: 48
-        y: 21
-        width: 52
-        height: 47
+        x: 0
+        y: 0
+        width: 128
+        height: 126
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -203,10 +203,10 @@ TextureImporter:
       name: PlayerLand_4
       rect:
         serializedVersion: 2
-        x: 175
-        y: 21
-        width: 44
-        height: 53
+        x: 128
+        y: 0
+        width: 128
+        height: 126
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -225,7 +225,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: f80a434ddf8e34a388534a1918ec0e8c
     internalID: 0
     vertices: []
     indices: 
@@ -233,7 +233,9 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
-      entries: []
+      entries:
+      - key: SpriteEditor.SliceSettings
+        value: '{"sliceOnImport":false,"gridCellCount":{"x":3.0,"y":2.0},"gridSpriteSize":{"x":128.0,"y":126.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"slicingType":2,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
       PlayerLand_0: 1486941119385035470
       PlayerLand_1: 7741993314928547577
