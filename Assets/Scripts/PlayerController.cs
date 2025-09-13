@@ -51,8 +51,8 @@ public class PlayerController : MonoBehaviour
 
         if (other.collider.CompareTag("FallingObject"))
         {
-            // OnPlayerDied?.Invoke();
-            // Destroy(gameObject);
+            OnPlayerDied?.Invoke();
+            Destroy(gameObject);
         }
 
         if (other.collider.CompareTag("Ground"))
