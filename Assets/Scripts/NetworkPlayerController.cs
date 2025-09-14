@@ -15,7 +15,7 @@ public class NetworkPlayerController : NetworkBehaviour
     private NetworkVariable<float> networkVelocityX = new NetworkVariable<float>();
     private NetworkVariable<bool> networkGrounded = new NetworkVariable<bool>(true);
 
-    private bool _isGrounded = false;
+    private bool _isGrounded = true;
     private bool _isFacingRight = true;
     private float horizontalMovement;
 
@@ -90,6 +90,25 @@ public class NetworkPlayerController : NetworkBehaviour
         networkFacingRight.OnValueChanged += OnFacingChanged;
         networkVelocityX.OnValueChanged += OnVelocityXChanged;
         networkGrounded.OnValueChanged += OnGroundedChanged;
+
+        // 초기 애니메이터 상태 설정
+        if (_animator != null)
+        {
+            if (IsOwner)
+            {
+                // 소유자는 로컬 상태로 설정
+                _animator.SetBool("grounded", _isGrounded);
+                _animator.SetFloat("velocityX", 0f);
+                Debug.Log($"[Owner] Initial animator state: grounded={_isGrounded}");
+            }
+            else
+            {
+                // 원격 플레이어는 네트워크 변수 값으로 설정
+                _animator.SetBool("grounded", networkGrounded.Value);
+                _animator.SetFloat("velocityX", networkVelocityX.Value);
+                Debug.Log($"[Remote] Initial animator state: grounded={networkGrounded.Value}, velocityX={networkVelocityX.Value}");
+            }
+        }
 
         // 플레이어 색상을 다르게 설정 (구분용)
         SetPlayerColor();
@@ -240,7 +259,7 @@ public class NetworkPlayerController : NetworkBehaviour
         
         if (context.performed && _isGrounded)
         {
-            Debug.Log($"PlayerInput Jump, IsGrounded: {_isGrounded}, IsOwner: {IsOwner}");
+            Debug.Log($"[Owner] PlayerInput Jump - setting grounded to false");
             
             // 로컬 물리 및 애니메이터 (기존 PlayerController와 동일)
             _rb.AddForce(new Vector2(0, _jumpForce), ForceMode2D.Impulse);
@@ -267,7 +286,7 @@ public class NetworkPlayerController : NetworkBehaviour
                 _animator.SetBool("grounded", true);
             }
             UpdateGroundedStateServerRpc(true);
-            Debug.Log("Player landed on ground");
+            Debug.Log($"[Owner] Player landed on ground - setting grounded to true");
         }
 
         // 다른 플레이어와 충돌 처리
@@ -294,12 +313,14 @@ public class NetworkPlayerController : NetworkBehaviour
     [ServerRpc]
     void UpdateAnimationServerRpc(float velocityX)
     {
+        Debug.Log($"[Server] Updating animation velocityX: {velocityX}");
         networkVelocityX.Value = velocityX;
     }
 
     [ServerRpc]
     void UpdateGroundedStateServerRpc(bool grounded)
     {
+        Debug.Log($"[Server] Updating grounded state: {grounded}");
         networkGrounded.Value = grounded;
     }
 
@@ -352,6 +373,7 @@ public class NetworkPlayerController : NetworkBehaviour
     {
         if (!IsOwner && _animator != null)
         {
+            Debug.Log($"[Remote] VelocityX changed: {oldValue} -> {newValue}");
             _animator.SetFloat("velocityX", newValue);
         }
     }
@@ -360,6 +382,7 @@ public class NetworkPlayerController : NetworkBehaviour
     {
         if (!IsOwner && _animator != null)
         {
+            Debug.Log($"[Remote] Grounded changed: {oldValue} -> {newValue}");
             _animator.SetBool("grounded", newValue);
         }
     }

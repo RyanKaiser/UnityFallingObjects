@@ -43,15 +43,34 @@ public class SimpleNetworkManager : MonoBehaviour
     {
         Debug.Log("SimpleNetworkManager Started!");
         
+        // 프레임 지연 후 초기화 (Unity 6 안정성을 위해)
+        StartCoroutine(InitializeNetworkManager());
+    }
+    
+    System.Collections.IEnumerator InitializeNetworkManager()
+    {
+        // 한 프레임 대기
+        yield return null;
+        
+        // NetworkManager 확인
+        if (NetworkManager.Singleton == null)
+        {
+            Debug.LogError("NetworkManager.Singleton is null! Make sure NetworkManager is in the scene.");
+            yield break;
+        }
+        
         // NetworkManager의 연결 이벤트 구독
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
         
+        Debug.Log("NetworkManager initialized successfully");
+        
         // Multiplayer Play Mode 환경에서 자동 시작
         if (autoStartInPlayMode)
         {
-            // 짧은 딜레이 후 자동 연결 시도
-            Invoke(nameof(TryConnectToGame), 0.5f);
+            // 더 긴 딜레이 후 자동 연결 시도 (안정성을 위해)
+            yield return new UnityEngine.WaitForSeconds(1f);
+            TryConnectToGame();
         }
         else
         {
@@ -125,6 +144,13 @@ public class SimpleNetworkManager : MonoBehaviour
 
     public void TryConnectToGame()
     {
+        // NetworkManager 확인
+        if (NetworkManager.Singleton == null)
+        {
+            Debug.LogError("Cannot connect: NetworkManager.Singleton is null!");
+            return;
+        }
+        
         // 이미 연결되어 있다면 무시
         if (NetworkManager.Singleton.IsClient || NetworkManager.Singleton.IsServer)
         {
@@ -157,6 +183,12 @@ public class SimpleNetworkManager : MonoBehaviour
 
     public void StartHost()
     {
+        if (NetworkManager.Singleton == null)
+        {
+            Debug.LogError("Cannot start host: NetworkManager.Singleton is null!");
+            return;
+        }
+        
         if (NetworkManager.Singleton.StartHost())
         {
             Debug.Log("Successfully started as Host");
@@ -169,6 +201,12 @@ public class SimpleNetworkManager : MonoBehaviour
 
     public void StartClient()
     {
+        if (NetworkManager.Singleton == null)
+        {
+            Debug.LogError("Cannot start client: NetworkManager.Singleton is null!");
+            return;
+        }
+        
         if (NetworkManager.Singleton.StartClient())
         {
             Debug.Log("Successfully started as Client");
@@ -181,6 +219,12 @@ public class SimpleNetworkManager : MonoBehaviour
 
     public void StartServer()
     {
+        if (NetworkManager.Singleton == null)
+        {
+            Debug.LogError("Cannot start server: NetworkManager.Singleton is null!");
+            return;
+        }
+        
         if (NetworkManager.Singleton.StartServer())
         {
             Debug.Log("Successfully started as Server");
@@ -194,6 +238,15 @@ public class SimpleNetworkManager : MonoBehaviour
     void OnGUI()
     {
         GUILayout.BeginArea(new Rect(10, 10, 300, 400));
+        
+        // NetworkManager 상태 확인
+        if (NetworkManager.Singleton == null)
+        {
+            GUILayout.Label("Status: NO NETWORK MANAGER", GUI.skin.box);
+            GUILayout.Label("NetworkManager.Singleton is null!");
+            GUILayout.EndArea();
+            return;
+        }
         
         // 연결 상태 표시
         if (NetworkManager.Singleton.IsHost)
@@ -213,7 +266,7 @@ public class SimpleNetworkManager : MonoBehaviour
             GUILayout.Label("Status: DISCONNECTED", GUI.skin.box);
         }
         
-        GUILayout.Label($"Connected Players: {NetworkManager.Singleton.ConnectedClients.Count}");
+        GUILayout.Label($"Connected Players: {NetworkManager.Singleton.ConnectedClients?.Count ?? 0}");
         
         GUILayout.Space(10);
         
