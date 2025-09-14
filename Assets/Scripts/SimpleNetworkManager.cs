@@ -1,19 +1,62 @@
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class SimpleNetworkManager : MonoBehaviour
 {
     [Header("Network Settings")]
     public int maxPlayers = 4;
     
+    [Header("Multiplayer Play Mode")]
+    public bool autoStartInPlayMode = false; // 수동 테스트를 위해 false로 변경
+    
+    // Input Actions
+    private InputAction hostAction;
+    private InputAction clientAction;
+    private InputAction serverAction;
+    
+    void Awake()
+    {
+        // Input Actions 설정
+        SetupInputActions();
+    }
+    
+    void SetupInputActions()
+    {
+        // 키보드 액션들 설정
+        hostAction = new InputAction("Host", InputActionType.Button, "<Keyboard>/h");
+        clientAction = new InputAction("Client", InputActionType.Button, "<Keyboard>/c");
+        serverAction = new InputAction("Server", InputActionType.Button, "<Keyboard>/s");
+        
+        // 이벤트 연결
+        hostAction.performed += OnHostPressed;
+        clientAction.performed += OnClientPressed;
+        serverAction.performed += OnServerPressed;
+        
+        // 액션 활성화
+        hostAction.Enable();
+        clientAction.Enable();
+        serverAction.Enable();
+    }
+    
     void Start()
     {
+        Debug.Log("SimpleNetworkManager Started!");
+        
         // NetworkManager의 연결 이벤트 구독
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
         
-        // 자동으로 호스트 또는 클라이언트로 연결 시도
-        TryConnectToGame();
+        // Multiplayer Play Mode 환경에서 자동 시작
+        if (autoStartInPlayMode)
+        {
+            // 짧은 딜레이 후 자동 연결 시도
+            Invoke(nameof(TryConnectToGame), 0.5f);
+        }
+        else
+        {
+            Debug.Log("Auto start disabled. Use H/C keys or GUI buttons.");
+        }
     }
 
     void OnDestroy()
@@ -24,11 +67,28 @@ public class SimpleNetworkManager : MonoBehaviour
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
             NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
         }
+        
+        // Input Actions 정리
+        if (hostAction != null)
+        {
+            hostAction.performed -= OnHostPressed;
+            hostAction.Dispose();
+        }
+        if (clientAction != null)
+        {
+            clientAction.performed -= OnClientPressed;
+            clientAction.Dispose();
+        }
+        if (serverAction != null)
+        {
+            serverAction.performed -= OnServerPressed;
+            serverAction.Dispose();
+        }
     }
 
     void OnClientConnected(ulong clientId)
     {
-        Debug.Log($"Client {clientId} connected");
+        Debug.Log($"Client {clientId} connected. Total clients: {NetworkManager.Singleton.ConnectedClients.Count}");
         
         // 기존 씬의 Player 오브젝트 비활성화 (네트워크 스폰된 플레이어만 사용)
         var scenePlayer = GameObject.FindGameObjectWithTag("Player");
@@ -41,62 +101,130 @@ public class SimpleNetworkManager : MonoBehaviour
 
     void OnClientDisconnected(ulong clientId)
     {
-        Debug.Log($"Client {clientId} disconnected");
+        Debug.Log($"Client {clientId} disconnected. Remaining clients: {NetworkManager.Singleton.ConnectedClients.Count}");
     }
 
-    void Update()
+    // Input System 이벤트 핸들러들
+    void OnHostPressed(InputAction.CallbackContext context)
     {
-        // 테스트용 키보드 입력
-        if (Input.GetKeyDown(KeyCode.H))
-        {
-            StartHost();
-        }
-        else if (Input.GetKeyDown(KeyCode.C))
-        {
-            StartClient();
-        }
-        else if (Input.GetKeyDown(KeyCode.S))
-        {
-            StartServer();
-        }
+        Debug.Log("H key pressed - Starting Host");
+        StartHost();
+    }
+    
+    void OnClientPressed(InputAction.CallbackContext context)
+    {
+        Debug.Log("C key pressed - Starting Client");
+        StartClient();
+    }
+    
+    void OnServerPressed(InputAction.CallbackContext context)
+    {
+        Debug.Log("S key pressed - Starting Server");
+        StartServer();
     }
 
     public void TryConnectToGame()
     {
-        // 프로토타입에서는 간단하게 호스트로 시작
-        // 나중에 실제 검색 로직으로 교체 예정
-        StartHost();
+        // 이미 연결되어 있다면 무시
+        if (NetworkManager.Singleton.IsClient || NetworkManager.Singleton.IsServer)
+        {
+            Debug.Log("Already connected to network");
+            return;
+        }
+        
+        // Multiplayer Play Mode에서 첫 번째 인스턴스는 Host, 나머지는 Client
+        bool isFirstInstance = IsFirstInstance();
+        
+        if (isFirstInstance)
+        {
+            Debug.Log("Starting as Host (first instance)");
+            StartHost();
+        }
+        else
+        {
+            Debug.Log("Starting as Client (subsequent instance)");
+            // 잠시 대기 후 클라이언트로 연결 (Host가 먼저 시작될 시간을 줌)
+            Invoke(nameof(StartClient), 1f);
+        }
+    }
+    
+    bool IsFirstInstance()
+    {
+        // Multiplayer Play Mode에서 인스턴스 구분
+        // 간단한 방법: 프로세스 ID나 랜덤 값 사용
+        return Random.Range(0f, 1f) > 0.5f || Application.isEditor;
     }
 
     public void StartHost()
     {
-        NetworkManager.Singleton.StartHost();
-        Debug.Log("Started as Host");
+        if (NetworkManager.Singleton.StartHost())
+        {
+            Debug.Log("Successfully started as Host");
+        }
+        else
+        {
+            Debug.LogError("Failed to start as Host");
+        }
     }
 
     public void StartClient()
     {
-        NetworkManager.Singleton.StartClient();
-        Debug.Log("Started as Client");
+        if (NetworkManager.Singleton.StartClient())
+        {
+            Debug.Log("Successfully started as Client");
+        }
+        else
+        {
+            Debug.LogError("Failed to start as Client");
+        }
     }
 
     public void StartServer()
     {
-        NetworkManager.Singleton.StartServer();
-        Debug.Log("Started as Server");
+        if (NetworkManager.Singleton.StartServer())
+        {
+            Debug.Log("Successfully started as Server");
+        }
+        else
+        {
+            Debug.LogError("Failed to start as Server");
+        }
     }
 
     void OnGUI()
     {
-        GUILayout.BeginArea(new Rect(10, 10, 300, 300));
+        GUILayout.BeginArea(new Rect(10, 10, 300, 400));
         
+        // 연결 상태 표시
+        if (NetworkManager.Singleton.IsHost)
+        {
+            GUILayout.Label("Status: HOST", GUI.skin.box);
+        }
+        else if (NetworkManager.Singleton.IsClient)
+        {
+            GUILayout.Label("Status: CLIENT", GUI.skin.box);
+        }
+        else if (NetworkManager.Singleton.IsServer)
+        {
+            GUILayout.Label("Status: SERVER", GUI.skin.box);
+        }
+        else
+        {
+            GUILayout.Label("Status: DISCONNECTED", GUI.skin.box);
+        }
+        
+        GUILayout.Label($"Connected Players: {NetworkManager.Singleton.ConnectedClients.Count}");
+        
+        GUILayout.Space(10);
+        
+        // 연결 버튼들
         if (!NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsServer)
         {
-            if (GUILayout.Button("Host"))
+            if (GUILayout.Button("Start Host"))
                 StartHost();
-            if (GUILayout.Button("Client"))
+            if (GUILayout.Button("Start Client"))
                 StartClient();
-            if (GUILayout.Button("Server"))
+            if (GUILayout.Button("Start Server"))
                 StartServer();
         }
         else
@@ -107,21 +235,28 @@ public class SimpleNetworkManager : MonoBehaviour
                 
                 // 씬 Player 다시 활성화
                 var scenePlayer = GameObject.FindWithTag("Player");
-                if (scenePlayer != null)
+                if (scenePlayer != null && !scenePlayer.activeSelf)
                 {
                     scenePlayer.SetActive(true);
                 }
             }
         }
         
-        GUILayout.Label($"Players: {NetworkManager.Singleton.ConnectedClients.Count}");
+        GUILayout.Space(10);
         
-        if (NetworkManager.Singleton.IsHost)
-            GUILayout.Label("Mode: Host");
-        else if (NetworkManager.Singleton.IsClient)
-            GUILayout.Label("Mode: Client");
-        else if (NetworkManager.Singleton.IsServer)
-            GUILayout.Label("Mode: Server");
+        // 테스트 정보
+        GUILayout.Label("=== MULTIPLAYER TEST ===");
+        GUILayout.Label("1. First instance: Press H (Host)");
+        GUILayout.Label("2. Second instance: Press C (Client)");
+        GUILayout.Space(5);
+        GUILayout.Label("Controls:");
+        GUILayout.Label("H - Start Host");
+        GUILayout.Label("C - Start Client");
+        GUILayout.Label("S - Start Server");
+        GUILayout.Space(5);
+        GUILayout.Label("Player Controls:");
+        GUILayout.Label("Move: WASD/Arrows");
+        GUILayout.Label("Jump: Space");
         
         GUILayout.EndArea();
     }

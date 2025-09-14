@@ -15,7 +15,7 @@ public class NetworkPlayerController : NetworkBehaviour
     private NetworkVariable<float> networkVelocityX = new NetworkVariable<float>();
     private NetworkVariable<bool> networkGrounded = new NetworkVariable<bool>(true);
 
-    private bool _isGrounded = true;
+    private bool _isGrounded = false;
     private bool _isFacingRight = true;
     private float horizontalMovement;
 
