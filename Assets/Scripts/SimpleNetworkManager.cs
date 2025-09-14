@@ -8,8 +8,40 @@ public class SimpleNetworkManager : MonoBehaviour
     
     void Start()
     {
+        // NetworkManager의 연결 이벤트 구독
+        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
+        
         // 자동으로 호스트 또는 클라이언트로 연결 시도
         TryConnectToGame();
+    }
+
+    void OnDestroy()
+    {
+        // 이벤트 구독 해제
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
+        }
+    }
+
+    void OnClientConnected(ulong clientId)
+    {
+        Debug.Log($"Client {clientId} connected");
+        
+        // 기존 씬의 Player 오브젝트 비활성화 (네트워크 스폰된 플레이어만 사용)
+        var scenePlayer = GameObject.FindGameObjectWithTag("Player");
+        if (scenePlayer != null && !scenePlayer.GetComponent<NetworkObject>().IsSpawned)
+        {
+            scenePlayer.SetActive(false);
+            Debug.Log("Scene player deactivated");
+        }
+    }
+
+    void OnClientDisconnected(ulong clientId)
+    {
+        Debug.Log($"Client {clientId} disconnected");
     }
 
     void Update()
@@ -67,8 +99,29 @@ public class SimpleNetworkManager : MonoBehaviour
             if (GUILayout.Button("Server"))
                 StartServer();
         }
+        else
+        {
+            if (GUILayout.Button("Disconnect"))
+            {
+                NetworkManager.Singleton.Shutdown();
+                
+                // 씬 Player 다시 활성화
+                var scenePlayer = GameObject.FindWithTag("Player");
+                if (scenePlayer != null)
+                {
+                    scenePlayer.SetActive(true);
+                }
+            }
+        }
         
         GUILayout.Label($"Players: {NetworkManager.Singleton.ConnectedClients.Count}");
+        
+        if (NetworkManager.Singleton.IsHost)
+            GUILayout.Label("Mode: Host");
+        else if (NetworkManager.Singleton.IsClient)
+            GUILayout.Label("Mode: Client");
+        else if (NetworkManager.Singleton.IsServer)
+            GUILayout.Label("Mode: Server");
         
         GUILayout.EndArea();
     }

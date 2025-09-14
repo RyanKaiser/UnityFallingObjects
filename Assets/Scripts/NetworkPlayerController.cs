@@ -13,18 +13,44 @@ public class NetworkPlayerController : NetworkBehaviour
     private NetworkVariable<Vector2> networkPosition = new NetworkVariable<Vector2>();
     private NetworkVariable<bool> networkFacingRight = new NetworkVariable<bool>(true);
     private NetworkVariable<float> networkVelocityX = new NetworkVariable<float>();
-    private NetworkVariable<bool> networkGrounded = new NetworkVariable<bool>();
+    private NetworkVariable<bool> networkGrounded = new NetworkVariable<bool>(true);
 
-    private bool _isGrounded;
+    private bool _isGrounded = true;
     private bool _isFacingRight = true;
     private float horizontalMovement;
 
+    // 입력 액션들
+    private InputAction moveAction;
+    private InputAction jumpAction;
+    
     void Awake()
     {
         if (_rb == null)
             _rb = GetComponent<Rigidbody2D>();
         if (_animator == null)
             _animator = GetComponent<Animator>();
+            
+        // Input Actions 설정
+        SetupInputActions();
+    }
+    
+    void SetupInputActions()
+    {
+        // 이동 액션 설정
+        moveAction = new InputAction("Move", InputActionType.Value, "<Keyboard>/a,<Keyboard>/d,<Keyboard>/leftArrow,<Keyboard>/rightArrow");
+        moveAction.AddCompositeBinding("1DAxis")
+            .With("Negative", "<Keyboard>/a")
+            .With("Negative", "<Keyboard>/leftArrow")
+            .With("Positive", "<Keyboard>/d")
+            .With("Positive", "<Keyboard>/rightArrow");
+            
+        // 점프 액션 설정
+        jumpAction = new InputAction("Jump", InputActionType.Button, "<Keyboard>/space");
+        
+        // 이벤트 연결
+        moveAction.performed += OnMovePerformed;
+        moveAction.canceled += OnMoveCanceled;
+        jumpAction.performed += OnJumpPerformed;
     }
 
     public override void OnNetworkSpawn()
@@ -32,21 +58,31 @@ public class NetworkPlayerController : NetworkBehaviour
         // 플레이어가 스폰될 때 초기 위치 설정
         if (IsOwner)
         {
-            // 소유자인 경우에만 입력 처리
+            // 소유자인 경우 PlayerInput 활성화 (커스텀 InputAction 대신)
             var playerInput = GetComponent<PlayerInput>();
             if (playerInput != null)
             {
                 playerInput.enabled = true;
+                Debug.Log("PlayerInput enabled for owner");
             }
+            
+            // 커스텀 InputAction 비활성화
+            moveAction.Disable();
+            jumpAction.Disable();
         }
         else
         {
-            // 다른 플레이어인 경우 입력 비활성화
+            // 다른 플레이어인 경우 PlayerInput 비활성화
             var playerInput = GetComponent<PlayerInput>();
             if (playerInput != null)
             {
                 playerInput.enabled = false;
+                Debug.Log("PlayerInput disabled for non-owner");
             }
+            
+            // 커스텀 InputAction도 비활성화
+            moveAction.Disable();
+            jumpAction.Disable();
         }
 
         // 네트워크 변수 변화 감지
@@ -57,6 +93,23 @@ public class NetworkPlayerController : NetworkBehaviour
 
         // 플레이어 색상을 다르게 설정 (구분용)
         SetPlayerColor();
+    }
+
+    void OnDestroy()
+    {
+        // Input Actions 정리
+        if (moveAction != null)
+        {
+            moveAction.performed -= OnMovePerformed;
+            moveAction.canceled -= OnMoveCanceled;
+            moveAction.Dispose();
+        }
+        
+        if (jumpAction != null)
+        {
+            jumpAction.performed -= OnJumpPerformed;
+            jumpAction.Dispose();
+        }
     }
 
     void SetPlayerColor()
@@ -89,21 +142,14 @@ public class NetworkPlayerController : NetworkBehaviour
             UpdateNetworkPositionServerRpc(transform.position);
         }
     }
-
-    void FixedUpdate()
-    {
-        if (IsOwner)
-        {
-            // 소유자만 물리 움직임 처리
-            _rb.linearVelocity = new Vector2(horizontalMovement * _speed, _rb.linearVelocity.y);
-        }
-    }
-
-    public void Move(InputAction.CallbackContext context)
+    
+    // Input System 이벤트 핸들러들
+    void OnMovePerformed(InputAction.CallbackContext context)
     {
         if (!IsOwner) return;
-
-        horizontalMovement = context.ReadValue<Vector2>().x;
+        
+        horizontalMovement = context.ReadValue<float>();
+        Debug.Log($"Move input: {horizontalMovement}, IsOwner: {IsOwner}");
         
         // 애니메이션 동기화
         UpdateAnimationServerRpc(Mathf.Abs(horizontalMovement));
@@ -120,15 +166,91 @@ public class NetworkPlayerController : NetworkBehaviour
             UpdateFacingDirectionServerRpc(false);
         }
     }
+    
+    void OnMoveCanceled(InputAction.CallbackContext context)
+    {
+        if (!IsOwner) return;
+        
+        horizontalMovement = 0;
+        Debug.Log("Move input canceled");
+        
+        // 애니메이션 동기화
+        UpdateAnimationServerRpc(0);
+    }
+    
+    void OnJumpPerformed(InputAction.CallbackContext context)
+    {
+        if (!IsOwner) return;
+        
+        if (_isGrounded)
+        {
+            Debug.Log($"Jump input, IsGrounded: {_isGrounded}, IsOwner: {IsOwner}");
+            _rb.AddForce(new Vector2(0, _jumpForce), ForceMode2D.Impulse);
+            _isGrounded = false;
+            UpdateGroundedStateServerRpc(false);
+        }
+    }
 
+    void FixedUpdate()
+    {
+        if (IsOwner)
+        {
+            // 소유자만 물리 움직임 처리
+            _rb.linearVelocity = new Vector2(horizontalMovement * _speed, _rb.linearVelocity.y);
+        }
+    }
+
+    // 기존 PlayerInput 메서드들은 더 이상 사용하지 않음 (Input System Actions로 대체)
+    
+    // PlayerInput 이벤트와 연결될 메서드들
+    public void Move(InputAction.CallbackContext context)
+    {
+        if (!IsOwner) return;
+        
+        horizontalMovement = context.ReadValue<Vector2>().x;
+        Debug.Log($"PlayerInput Move: {horizontalMovement}, IsOwner: {IsOwner}");
+        
+        // 로컬 애니메이터 업데이트
+        if (_animator != null)
+        {
+            _animator.SetFloat("velocityX", Mathf.Abs(horizontalMovement));
+        }
+        
+        // 네트워크로 애니메이션 동기화
+        UpdateAnimationServerRpc(Mathf.Abs(horizontalMovement));
+        
+        // 방향 전환 처리 (기존 PlayerController와 동일)
+        if (horizontalMovement > 0 && !_isFacingRight)
+        {
+            _isFacingRight = true;
+            transform.localScale = new Vector3(1, 1, 1);
+            UpdateFacingDirectionServerRpc(true);
+        }
+        else if (horizontalMovement < 0 && _isFacingRight)
+        {
+            _isFacingRight = false;
+            transform.localScale = new Vector3(-1, 1, 1);
+            UpdateFacingDirectionServerRpc(false);
+        }
+    }
+    
     public void Jump(InputAction.CallbackContext context)
     {
         if (!IsOwner) return;
-
+        
         if (context.performed && _isGrounded)
         {
+            Debug.Log($"PlayerInput Jump, IsGrounded: {_isGrounded}, IsOwner: {IsOwner}");
+            
+            // 로컬 물리 및 애니메이터 (기존 PlayerController와 동일)
             _rb.AddForce(new Vector2(0, _jumpForce), ForceMode2D.Impulse);
             _isGrounded = false;
+            if (_animator != null)
+            {
+                _animator.SetBool("grounded", false);
+            }
+            
+            // 네트워크 동기화
             UpdateGroundedStateServerRpc(false);
         }
     }
@@ -140,7 +262,12 @@ public class NetworkPlayerController : NetworkBehaviour
         if (other.collider.CompareTag("Ground"))
         {
             _isGrounded = true;
+            if (_animator != null)
+            {
+                _animator.SetBool("grounded", true);
+            }
             UpdateGroundedStateServerRpc(true);
+            Debug.Log("Player landed on ground");
         }
 
         // 다른 플레이어와 충돌 처리
