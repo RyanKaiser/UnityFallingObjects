@@ -13,6 +13,15 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Debug Info
+        run: |
+          echo "🔍 Workflow: ${{ github.workflow }}"
+          echo "📁 Workflow File: ${{ github.workflow_ref }}"
+          echo "🎯 Event: ${{ github.event_name }}"
+          echo "🔧 Action: ${{ github.event.action }}"
+          echo "📋 PR Number: #${{ github.event.pull_request.number }}"
+          echo "✏️ PR Title: ${{ github.event.pull_request.title }}"
+          
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
@@ -53,4 +62,5 @@ jobs:
         uses: mshick/add-pr-comment@v2
         with:
           message: ${{ steps.store.outputs.comment }}
+
           repo-token: ${{ secrets.GITHUB_TOKEN }}
