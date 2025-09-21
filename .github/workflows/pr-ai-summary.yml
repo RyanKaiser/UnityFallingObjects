@@ -25,7 +25,7 @@ jobs:
 
       - name: Install Python Packages
         run: |
-          pip install google-generativeai
+          pip install google-genai
 
       - name: Fetch and Generate Git Diff for PR
         run: |
