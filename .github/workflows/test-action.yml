@@ -1,0 +1,13 @@
+name: Simple Test Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  hello-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Hello Message
+        run: echo "Hello, Github Actions!"
