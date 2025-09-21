@@ -2,7 +2,7 @@ name: Gemini PR Summary and Explanation
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
 
 jobs:
   pr-summary:
@@ -34,7 +34,7 @@ jobs:
 
       - name: Install Python Packages
         run: |
-          pip install google-generativeai
+          pip install google-genai
 
       - name: Fetch and Generate Git Diff for PR
         run: |
@@ -62,4 +62,5 @@ jobs:
         uses: mshick/add-pr-comment@v2
         with:
           message: ${{ steps.store.outputs.comment }}
+
           repo-token: ${{ secrets.GITHUB_TOKEN }}
