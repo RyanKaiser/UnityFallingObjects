@@ -1,5 +1,5 @@
 import os
-import google.generativeai as genai
+from google import genai
 
 def main():
     # Gemini API 키 읽기
