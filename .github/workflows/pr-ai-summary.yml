@@ -2,7 +2,7 @@ name: Gemini PR Summary and Explanation
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
 
 jobs:
   pr-summary:
