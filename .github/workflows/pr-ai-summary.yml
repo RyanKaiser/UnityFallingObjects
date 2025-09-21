@@ -1,0 +1,56 @@
+name: Gemini PR Summary and Explanation
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  pr-summary:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9.16'
+
+      - name: Install Python Packages
+        run: |
+          pip install google-generativeai
+
+      - name: Fetch and Generate Git Diff for PR
+        run: |
+          git fetch origin "${{ github.event.pull_request.base.ref }}"
+          git fetch origin "${{ github.event.pull_request.head.ref }}"
+          git diff --unified=0 "origin/${{ github.event.pull_request.base.ref }}" > diff.txt
+
+      - name: Generate PR Summary with Gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python3 deployment/generate_summary.py
+
+      - name: Format PR Review Summary for Comment
+        id: store
+        run: |
+          COMMENT_STRING=$(cat review_result.txt)
+
+          echo "comment<<EOF" >> $GITHUB_OUTPUT
+          echo "# AI PR 요약" >> $GITHUB_OUTPUT
+          echo "$COMMENT_STRING" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post PR Summary Comment
+        uses: mshick/add-pr-comment@v2
+        with:
+          message: ${{ steps.store.outputs.comment }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
